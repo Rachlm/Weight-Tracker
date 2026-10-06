@@ -202,7 +202,7 @@ textarea{min-height:90px;font-size:.8rem;font-family:ui-monospace,Menlo,monospac
         <button type="button" data-sex="female" aria-pressed="false">Woman</button>
       </div>
       <div class="grid2">
-        <div><label for="pHeight">Height (cm)</label><input id="pHeight" type="number" inputmode="decimal" min="100" max="230" step="0.5" placeholder="180"></div>
+        <div><label for="pHeight">Height (cm)</label><input id="pHeight" type="text" inputmode="decimal" autocomplete="off" min="100" max="230" step="0.5" placeholder="180"></div>
         <div><label for="pAge">Age</label><input id="pAge" type="number" inputmode="numeric" min="12" max="110" step="1" placeholder="35"></div>
       </div>
       <label for="pActivity">Daily activity</label>
@@ -218,7 +218,7 @@ textarea{min-height:90px;font-size:.8rem;font-family:ui-monospace,Menlo,monospac
     <div class="panel">
       <h2>Goal</h2>
       <div class="grid2">
-        <div><label for="gWeight">Target weight (kg)</label><input id="gWeight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="80"></div>
+        <div><label for="gWeight">Target weight (kg)</label><input id="gWeight" type="text" inputmode="decimal" autocomplete="off" min="30" max="300" step="0.1" placeholder="80"></div>
         <div><label for="gDate">Reach it by</label><input id="gDate" type="date"></div>
       </div>
       <p class="note" id="goalCheck"></p>
@@ -270,7 +270,7 @@ textarea{min-height:90px;font-size:.8rem;font-family:ui-monospace,Menlo,monospac
 <dialog id="addDialog">
   <h2 id="dlgTitle">Add weigh-in</h2>
   <label for="eWeight">Weight (kg)</label>
-  <input id="eWeight" class="weight-input" type="number" inputmode="decimal" min="20" max="350" step="0.1" placeholder="0.0">
+  <input id="eWeight" class="weight-input" type="text" inputmode="decimal" autocomplete="off" min="20" max="350" step="0.1" placeholder="0.0">
   <label for="eDate">Date</label>
   <input id="eDate" type="date">
   <label for="eNote">Note (optional)</label>
@@ -309,6 +309,7 @@ function toUTC(s){ const [y,m,d]=s.split("-").map(Number); return Date.UTC(y,m-1
 function daysBetween(a,b){ return Math.round((toUTC(b)-toUTC(a))/86400000); }
 function addDays(s,n){ const t=new Date(toUTC(s)+n*86400000); return t.getUTCFullYear()+"-"+pad(t.getUTCMonth()+1)+"-"+pad(t.getUTCDate()); }
 function fmtDate(s,opts){ return new Date(toUTC(s)).toLocaleDateString(undefined, Object.assign({timeZone:"UTC"}, opts||{day:"numeric",month:"short",year:"numeric"})); }
+const num = v => parseFloat(String(v).trim().replace(",","."));
 const f1 = n => (Math.round(n*10)/10).toFixed(1);
 
 /* ---------- calculations ---------- */
@@ -571,7 +572,7 @@ function fillSettings(){
 }
 
 function updateGoalCheck(){
-  const w=parseFloat($("#gWeight").value), d=$("#gDate").value, cur=latest(), out=$("#goalCheck");
+  const w=num($("#gWeight").value), d=$("#gDate").value, cur=latest(), out=$("#goalCheck");
   if (!w||!d){ out.textContent=""; return; }
   if (d<=todayStr()){ out.textContent="Pick a date in the future."; out.style.color="var(--obese)"; return; }
   if (!cur){ out.textContent="Add a weigh-in to see the weekly pace this needs."; out.style.color=""; return; }
@@ -599,7 +600,7 @@ document.addEventListener("click",ev=>{
 let sexSel=null;
 $$("#sexSeg button").forEach(b=>b.addEventListener("click",()=>{ sexSel=b.dataset.sex; $$("#sexSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); }));
 $("#saveProfile").addEventListener("click",()=>{
-  const h=parseFloat($("#pHeight").value), a=parseInt($("#pAge").value,10);
+  const h=num($("#pHeight").value), a=parseInt($("#pAge").value,10);
   const sex = sexSel || (state.profile&&state.profile.sex);
   if (!sex) return toast("Choose man or woman");
   if (!(h>=100&&h<=230)) return toast("Enter a height between 100 and 230 cm");
@@ -610,7 +611,7 @@ $("#saveProfile").addEventListener("click",()=>{
 $("#gWeight").addEventListener("input",updateGoalCheck);
 $("#gDate").addEventListener("input",updateGoalCheck);
 $("#saveGoal").addEventListener("click",()=>{
-  const w=parseFloat($("#gWeight").value), d=$("#gDate").value;
+  const w=num($("#gWeight").value), d=$("#gDate").value;
   if (!(w>=30&&w<=300)) return toast("Enter a target weight");
   if (!d || d<=todayStr()) return toast("Pick a target date in the future");
   const cur=latest();
@@ -636,7 +637,7 @@ function openDialog(id){
 $("#addBtn").addEventListener("click",()=>openDialog());
 $("#cancelEntry").addEventListener("click",()=>dlg.close());
 $("#saveEntry").addEventListener("click",()=>{
-  const w=parseFloat(String($("#eWeight").value).replace(",",".")), d=$("#eDate").value, note=$("#eNote").value.trim();
+  const w=num($("#eWeight").value), d=$("#eDate").value, note=$("#eNote").value.trim();
   if (!(w>=20&&w<=350)) return toast("Enter a weight in kg");
   if (!d) return toast("Pick a date");
   let msg="Weight saved";
