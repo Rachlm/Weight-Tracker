@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weight Tracker</title>
+<meta name="theme-color" content="#1E3A4A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Weight">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F4; --surface:#FFFFFF; --ink:#18232F; --muted:#5B6875; --line:#D5DCE2;
+  --healthy:#2C8C7E; --under:#6C8EBF; --over:#D29A2A; --obese:#C24A3F; --plan:#5A5FC8;
+  --primary:#1E3A4A; --on-primary:#FFFFFF; --soft:#E4EBEE;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --surface:#18222A; --ink:#E6ECF0; --muted:#93A1AD; --line:#2A3640;
+    --healthy:#4DB6A4; --under:#8AA9D6; --over:#E2B04A; --obese:#E0675B; --plan:#9A9EF2;
+    --primary:#CFE6E1; --on-primary:#10171D; --soft:#202C35;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --surface:#18222A; --ink:#E6ECF0; --muted:#93A1AD; --line:#2A3640;
+  --healthy:#4DB6A4; --under:#8AA9D6; --over:#E2B04A; --obese:#E0675B; --plan:#9A9EF2;
+  --primary:#CFE6E1; --on-primary:#10171D; --soft:#202C35;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--healthy);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 110px}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15}
+h2{font-size:1.15rem;font-weight:700;margin-bottom:12px}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.panel{background:var(--surface);border-radius:18px;padding:18px;margin-bottom:14px}
+.topbar{display:flex;align-items:baseline;justify-content:space-between;margin:6px 2px 14px}
+.topbar h1{font-size:1.5rem;font-weight:700}
+
+/* Hero */
+.hero .now{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.hero .big{font-family:var(--display);font-weight:700;font-size:clamp(3rem,15vw,4.4rem);line-height:.9;letter-spacing:-.02em}
+.hero .unit{font-family:var(--display);font-size:1.3rem;color:var(--muted);margin-bottom:6px}
+.hero .delta{margin-left:auto;text-align:right;font-size:.9rem}
+.bmi-chip{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 10px;border-radius:999px;font-weight:600;font-size:.9rem;background:var(--soft)}
+.bmi-chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* Scale ruler */
+.ruler{margin-top:22px;position:relative;padding-top:30px;padding-bottom:30px}
+.ruler .bar{display:flex;height:14px;border-radius:7px;overflow:hidden}
+.ruler .bar span{display:block;height:100%}
+.ruler .pin{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:.78rem;font-weight:600;white-space:nowrap}
+.ruler .pin::after{content:"";width:2px;height:22px;background:var(--ink);margin-top:2px}
+.ruler .pin.target{top:auto;bottom:0;flex-direction:column-reverse;color:var(--plan)}
+.ruler .pin.target::after{background:var(--plan);margin-top:0;margin-bottom:2px}
+.ruler .ticks{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted);margin-top:4px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--soft);border-radius:12px;padding:10px}
+.stat .v{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.2}
+.stat .l{font-size:.78rem;color:var(--muted)}
+
+/* Pace verdict */
+.verdict{display:flex;gap:12px;align-items:flex-start;border-left:4px solid var(--healthy);padding:4px 0 4px 12px;margin-top:14px}
+.verdict.orange{border-color:var(--over)} .verdict.red{border-color:var(--obese)}
+.verdict p{margin:0}
+.verdict strong{display:block}
+
+/* Healthy panel rows */
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--muted)}
+.row .v{font-weight:600;text-align:right}
+.note{font-size:.85rem;color:var(--muted);margin:12px 0 0}
+
+/* Chart */
+.chart-box{width:100%;overflow:hidden}
+.chart-box svg{display:block;width:100%;height:auto}
+.empty{padding:22px 4px;text-align:center;color:var(--muted)}
+
+/* History */
+.entry{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.entry:last-child{border-bottom:0}
+.entry .d{flex:1}
+.entry .d small{display:block;color:var(--muted)}
+.entry .w{font-family:var(--display);font-weight:700;font-size:1.2rem}
+.entry .ch{font-size:.8rem;width:52px;text-align:right}
+.up{color:var(--obese)} .down{color:var(--healthy)}
+.iconbtn{background:none;border:0;padding:8px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.iconbtn:hover{background:var(--soft)}
+
+/* Forms */
+label{display:block;font-size:.85rem;font-weight:600;margin:12px 0 5px}
+input[type=number],input[type=date],input[type=text],select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface)}
+input:focus,select:focus,textarea:focus{border-color:var(--healthy);outline:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:9px;font-weight:600;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;border:0;border-radius:12px;padding:12px 18px;font-weight:600;cursor:pointer;background:var(--primary);color:var(--on-primary)}
+.btn.ghost{background:var(--soft);color:var(--ink)}
+.btn.danger{background:none;color:var(--obese);padding-left:0}
+.btn.block{width:100%;margin-top:16px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+
+/* Tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav.tabs .in{display:flex;max-width:560px;width:100%}
+nav.tabs button{flex:1;border:0;background:none;padding:10px 4px 12px;font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-selected=true]{color:var(--ink)}
+.fab{position:fixed;right:max(16px,calc(50% - 264px));bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:18px;padding:14px 20px;background:var(--primary);color:var(--on-primary);font-weight:700;font-size:1rem;box-shadow:0 6px 18px rgba(0,0,0,.22);cursor:pointer;display:flex;align-items:center;gap:8px}
+section[hidden]{display:none}
+
+/* Dialog */
+dialog{border:0;border-radius:20px;padding:20px;width:min(92vw,420px);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(10,15,20,.5)}
+.weight-input{font-family:var(--display);font-size:2.4rem !important;font-weight:700;text-align:center;padding:10px !important}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.toast.show{opacity:1}
+textarea{min-height:90px;font-size:.8rem;font-family:ui-monospace,Menlo,monospace}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><h1>Weight Tracker</h1><span class="muted small" id="syncState"></span></div>
+
+  <!-- OVERVIEW -->
+  <section id="tab-overview">
+    <div id="setupPrompt" class="panel" hidden>
+      <h2>Start with your profile</h2>
+      <p class="muted" style="margin:0">Add your height, age and sex. That's what your healthy weight range and goal pace are calculated from.</p>
+      <button class="btn block" data-goto="settings">Set up profile</button>
+    </div>
+
+    <div class="panel hero" id="heroPanel">
+      <div class="now">
+        <span class="big" id="curWeight">–</span><span class="unit">kg</span>
+        <div class="delta" id="curDelta"></div>
+      </div>
+      <div id="bmiChip"></div>
+      <div class="ruler" id="ruler"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="goalPanel">
+      <h2>Your goal</h2>
+      <div id="goalBody"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Progress</h2>
+      <div class="chart-box" id="chart"></div>
+      <div class="legend" id="chartLegend">
+        <span><b style="background:var(--ink)"></b>Weigh-ins</span>
+        <span><b style="background:var(--healthy)"></b>7-day average</span>
+        <span><b style="background:var(--plan)"></b>Plan to target</span>
+        <span><b style="background:var(--healthy);opacity:.18"></b>Healthy range</span>
+      </div>
+    </div>
+
+    <div class="panel" id="normPanel">
+      <h2>What's normal for you</h2>
+      <div id="normBody"></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="tab-history" hidden>
+    <div class="panel">
+      <h2>Weigh-ins</h2>
+      <div id="historyList"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" hidden>
+    <div class="panel">
+      <h2>Profile</h2>
+      <label>Sex</label>
+      <div class="seg" id="sexSeg">
+        <button type="button" data-sex="male" aria-pressed="false">Man</button>
+        <button type="button" data-sex="female" aria-pressed="false">Woman</button>
+      </div>
+      <div class="grid2">
+        <div><label for="pHeight">Height (cm)</label><input id="pHeight" type="number" inputmode="decimal" min="100" max="230" step="0.5" placeholder="180"></div>
+        <div><label for="pAge">Age</label><input id="pAge" type="number" inputmode="numeric" min="12" max="110" step="1" placeholder="35"></div>
+      </div>
+      <label for="pActivity">Daily activity</label>
+      <select id="pActivity">
+        <option value="1.2">Mostly sitting, little exercise</option>
+        <option value="1.375">Light: exercise 1–3 days a week</option>
+        <option value="1.55">Moderate: exercise 3–5 days a week</option>
+        <option value="1.725">Very active: hard exercise 6–7 days a week</option>
+      </select>
+      <button class="btn block" id="saveProfile">Save profile</button>
+    </div>
+
+    <div class="panel">
+      <h2>Goal</h2>
+      <div class="grid2">
+        <div><label for="gWeight">Target weight (kg)</label><input id="gWeight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="80"></div>
+        <div><label for="gDate">Reach it by</label><input id="gDate" type="date"></div>
+      </div>
+      <p class="note" id="goalCheck"></p>
+      <button class="btn block" id="saveGoal">Save goal</button>
+      <button class="btn danger" id="clearGoal" type="button">Remove goal</button>
+    </div>
+
+    <div class="panel">
+      <h2>Appearance</h2>
+      <div class="seg" id="themeSeg">
+        <button type="button" data-theme="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-theme="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Backup</h2>
+      <p class="muted small" style="margin:0">Your data is saved automatically on this phone and is not shared. Export a backup file now and then to keep a copy, or import one to restore it.</p>
+      <div class="btnrow">
+        <button class="btn ghost" id="exportBtn">Export backup</button>
+        <button class="btn ghost" id="importBtn">Import backup</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <div id="exportFallback" hidden>
+        <label for="exportText">Backup text (copy it if the file did not download)</label>
+        <textarea id="exportText" readonly></textarea>
+      </div>
+    </div>
+  </section>
+</div>
+
+<button class="fab" id="addBtn" aria-label="Add weigh-in">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  Add weight
+</button>
+
+<nav class="tabs" role="tablist">
+  <div class="in">
+    <button role="tab" data-tab="overview" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg>Overview</button>
+    <button role="tab" data-tab="history" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>History</button>
+    <button role="tab" data-tab="settings" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profile &amp; goal</button>
+  </div>
+</nav>
+
+<dialog id="addDialog">
+  <h2 id="dlgTitle">Add weigh-in</h2>
+  <label for="eWeight">Weight (kg)</label>
+  <input id="eWeight" class="weight-input" type="number" inputmode="decimal" min="20" max="350" step="0.1" placeholder="0.0">
+  <label for="eDate">Date</label>
+  <input id="eDate" type="date">
+  <label for="eNote">Note (optional)</label>
+  <input id="eNote" type="text" maxlength="80" placeholder="e.g. after training">
+  <div class="btnrow" style="justify-content:flex-end">
+    <button class="btn ghost" id="cancelEntry" type="button">Cancel</button>
+    <button class="btn" id="saveEntry" type="button">Save weight</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const LS_KEY = "weight-tracker-v1";
+const THEME_KEY = "weight-tracker-theme";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* ---------- state ---------- */
+let state = {profile:null, goal:null, entries:[], updatedAt:0};
+try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch(e){}
+let editingId = null;
+
+function persist(){
+  state.updatedAt = Date.now();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
+}
+function setSync(t){ $("#syncState").textContent = t; }
+
+/* ---------- date helpers ---------- */
+const pad = n => String(n).padStart(2,"0");
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function toUTC(s){ const [y,m,d]=s.split("-").map(Number); return Date.UTC(y,m-1,d); }
+function daysBetween(a,b){ return Math.round((toUTC(b)-toUTC(a))/86400000); }
+function addDays(s,n){ const t=new Date(toUTC(s)+n*86400000); return t.getUTCFullYear()+"-"+pad(t.getUTCMonth()+1)+"-"+pad(t.getUTCDate()); }
+function fmtDate(s,opts){ return new Date(toUTC(s)).toLocaleDateString(undefined, Object.assign({timeZone:"UTC"}, opts||{day:"numeric",month:"short",year:"numeric"})); }
+const f1 = n => (Math.round(n*10)/10).toFixed(1);
+
+/* ---------- calculations ---------- */
+function sortedEntries(){ return state.entries.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0); }
+function latest(){ const e=sortedEntries(); return e.length?e[e.length-1]:null; }
+
+function bmiBands(age){
+  // Adults under 65: WHO cut-offs. 65+: commonly advised 22–27 healthy range.
+  if (age>=65) return {low:22, high:27, over:30};
+  return {low:18.5, high:24.9, over:30};
+}
+function weightForBmi(bmi,h){ return bmi*Math.pow(h/100,2); }
+function bmiOf(w,h){ return w/Math.pow(h/100,2); }
+function bmiCategory(bmi,age){
+  const b=bmiBands(age);
+  if (bmi<b.low) return {name:"Underweight", color:"var(--under)"};
+  if (bmi<=b.high) return {name:"Healthy", color:"var(--healthy)"};
+  if (bmi<b.over) return {name:"Overweight", color:"var(--over)"};
+  return {name:"Obese", color:"var(--obese)"};
+}
+function idealWeights(h,sex){
+  const x = (h/2.54) - 60; // inches over 5 ft
+  const m = sex==="male";
+  const r = {
+    Devine:   m ? 50+2.3*x   : 45.5+2.3*x,
+    Robinson: m ? 52+1.9*x   : 49+1.7*x,
+    Miller:   m ? 56.2+1.41*x: 53.1+1.36*x,
+    Hamwi:    m ? 48+2.7*x   : 45.5+2.2*x
+  };
+  const vals = Object.values(r);
+  return {list:r, avg: vals.reduce((a,b)=>a+b,0)/vals.length, min:Math.min(...vals), max:Math.max(...vals)};
+}
+function bmr(w,h,age,sex){ return 10*w + 6.25*h - 5*age + (sex==="male"?5:-161); }
+
+function pace(goal, current){
+  const today=todayStr();
+  const days = daysBetween(today, goal.targetDate);
+  const diff = goal.targetWeight - current; // negative = lose
+  if (days<=0) return {days, diff, perWeek:null};
+  const perWeek = diff/(days/7);
+  const losing = diff<0, abs=Math.abs(perWeek);
+  const greenMax = losing?0.75:0.5, orangeMax = losing?1.0:0.75;
+  let level = abs<=greenMax?"green":abs<=orangeMax?"orange":"red";
+  const safeRate = losing?0.5:0.35;
+  const safeWeeks = Math.abs(diff)/safeRate;
+  const safeDate = addDays(today, Math.ceil(safeWeeks*7));
+  return {days, diff, perWeek, level, safeDate};
+}
+function trend(){
+  // Linear regression over the last 28 days of entries
+  const e = sortedEntries();
+  if (e.length<3) return null;
+  const last = e[e.length-1].date;
+  const pts = e.filter(x=>daysBetween(x.date,last)<=28).map(x=>({t:daysBetween(e[0].date,x.date), w:x.weight}));
+  if (pts.length<3) return null;
+  const n=pts.length, mt=pts.reduce((a,p)=>a+p.t,0)/n, mw=pts.reduce((a,p)=>a+p.w,0)/n;
+  let num=0, den=0; pts.forEach(p=>{num+=(p.t-mt)*(p.w-mw); den+=(p.t-mt)*(p.t-mt);});
+  if (!den) return null;
+  return {slope:num/den}; // kg per day
+}
+function avg7(entries){
+  return entries.map((e,i)=>{
+    const win = entries.filter(x=>{ const d=daysBetween(x.date,e.date); return d>=0 && d<7; });
+    return {date:e.date, w: win.reduce((a,x)=>a+x.weight,0)/win.length};
+  });
+}
+
+/* ---------- rendering ---------- */
+function renderAll(){
+  const p=state.profile, cur=latest();
+  $("#setupPrompt").hidden = !!(p && p.height && p.age && p.sex);
+  renderHero(p,cur);
+  renderGoal(p,cur);
+  renderChart(p);
+  renderNorm(p,cur);
+  renderHistory();
+  fillSettings();
+}
+
+function renderHero(p,cur){
+  const e=sortedEntries();
+  $("#curWeight").textContent = cur?f1(cur.weight):"–";
+  const d=$("#curDelta");
+  if (cur && e.length>1){
+    const first=e[0], ch=cur.weight-first.weight;
+    d.innerHTML = `<span class="${ch>0?"up":"down"}" style="font-weight:600">${ch>0?"+":""}${f1(ch)} kg</span><br><span class="muted">since ${fmtDate(first.date,{day:"numeric",month:"short"})}</span>`;
+  } else d.innerHTML = cur?`<span class="muted">${fmtDate(cur.date)}</span>`:`<span class="muted">No weigh-ins yet</span>`;
+
+  const chip=$("#bmiChip"), ruler=$("#ruler"), legend=$("#legend");
+  if (!(p&&p.height&&p.age) ){ chip.innerHTML=""; ruler.innerHTML=""; legend.innerHTML=""; ruler.style.display="none"; return; }
+  ruler.style.display="";
+  const b=bmiBands(p.age), h=p.height;
+  const wLow=weightForBmi(b.low,h), wHigh=weightForBmi(b.high,h), wOver=weightForBmi(b.over,h);
+  const g=state.goal;
+  const marks=[wLow,wOver]; if(cur) marks.push(cur.weight); if(g) marks.push(g.targetWeight);
+  const min=Math.floor(Math.min(...marks, wLow-10)/5)*5;
+  const max=Math.ceil(Math.max(...marks, wOver+10)/5)*5;
+  const pos = w => Math.max(0,Math.min(100,(w-min)/(max-min)*100));
+  const seg = (a,bb,c)=>`<span style="width:${pos(bb)-pos(a)}%;background:${c}"></span>`;
+  let html = `<div class="bar">${seg(min,wLow,"var(--under)")}${seg(wLow,wHigh,"var(--healthy)")}${seg(wHigh,wOver,"var(--over)")}${seg(wOver,max,"var(--obese)")}</div>`;
+  if (cur) html += `<div class="pin" style="left:${pos(cur.weight)}%">Now ${f1(cur.weight)}</div>`;
+  if (g) html += `<div class="pin target" style="left:${pos(g.targetWeight)}%">Target ${f1(g.targetWeight)}</div>`;
+  html += `<div class="ticks"><span>${min}</span><span>${max} kg</span></div>`;
+  ruler.innerHTML = html;
+  legend.innerHTML = `<span><b style="background:var(--healthy)"></b>Healthy ${f1(wLow)}–${f1(wHigh)} kg</span><span><b style="background:var(--over)"></b>Overweight</span><span><b style="background:var(--obese)"></b>Obese</span>`;
+  if (cur){
+    const bmi=bmiOf(cur.weight,h), c=bmiCategory(bmi,p.age);
+    chip.innerHTML = `<span class="bmi-chip"><i style="background:${c.color}"></i>BMI ${f1(bmi)} · ${c.name}</span>`;
+  } else chip.innerHTML="";
+}
+
+function renderGoal(p,cur){
+  const body=$("#goalBody"), g=state.goal;
+  if (!g){ body.innerHTML = `<p class="muted" style="margin:0">Set a target weight and a date, and you'll see the pace you need and whether it's realistic.</p><button class="btn block ghost" data-goto="settings">Set a goal</button>`; return; }
+  if (!cur){ body.innerHTML = `<p class="muted" style="margin:0">Target <strong>${f1(g.targetWeight)} kg</strong> by ${fmtDate(g.targetDate)}. Add your first weigh-in to see your progress.</p>`; return; }
+  const pc=pace(g,cur.weight), start=g.startWeight ?? cur.weight;
+  const total=g.targetWeight-start, done=cur.weight-start;
+  const pct = total? Math.max(0,Math.min(100, done/total*100)):100;
+  const toGo = g.targetWeight-cur.weight;
+  const t=trend();
+  let forecast="–";
+  if (t && Math.abs(t.slope)>0.002 && Math.sign(t.slope)===Math.sign(toGo)){
+    forecast = fmtDate(addDays(todayStr(), Math.ceil(toGo/t.slope)),{day:"numeric",month:"short",year:"2-digit"});
+  } else if (Math.abs(toGo)<0.05) forecast="Reached";
+  let html = `<div class="stats">
+    <div class="stat"><div class="v">${Math.abs(toGo)<0.05?"0.0":f1(Math.abs(toGo))}</div><div class="l">kg to ${toGo<0?"lose":"gain"}</div></div>
+    <div class="stat"><div class="v">${Math.max(0,pc.days)}</div><div class="l">days left</div></div>
+    <div class="stat"><div class="v">${Math.round(pct)}%</div><div class="l">of the way</div></div>
+    <div class="stat"><div class="v">${f1(start)}</div><div class="l">start kg</div></div>
+    <div class="stat"><div class="v">${f1(g.targetWeight)}</div><div class="l">target kg</div></div>
+    <div class="stat"><div class="v" style="font-size:1rem;padding-top:4px">${forecast}</div><div class="l">forecast at your trend</div></div>
+  </div>`;
+  if (Math.abs(toGo)<0.05){
+    html += `<div class="verdict"><p><strong>You've reached your target.</strong>Set a new goal or keep logging to hold it.</p></div>`;
+  } else if (pc.perWeek===null){
+    html += `<div class="verdict red"><p><strong>Your target date has passed.</strong>Pick a new date in Profile & goal.</p></div>`;
+  } else {
+    const word = pc.diff<0?"lose":"gain";
+    const msgs = {
+      green:["Realistic pace", "This is a pace most people can keep up."],
+      orange:["Ambitious pace", "Doable, but hard to keep up. A slightly later date makes it easier."],
+      red:["Too fast", `A safer target date would be around ${fmtDate(pc.safeDate)}.`]
+    };
+    const m=msgs[pc.level];
+    let kcal="";
+    if (p && p.height && p.age && p.sex){
+      const tdee = bmr(cur.weight,p.height,p.age,p.sex)*(p.activity||1.2);
+      const daily = (pc.diff*7700)/pc.days; // kcal per day (negative = deficit)
+      const floor = p.sex==="male"?1500:1200;
+      const target = tdee+daily;
+      if (target<floor) kcal = `<p class="small" style="margin-top:6px">Your plan needs about ${Math.round(target)} kcal a day, which is below a safe minimum of ${floor} kcal. Move the date further out.</p>`;
+      else kcal = `<p class="small" style="margin-top:6px">Eat about <strong style="display:inline">${Math.round(target/10)*10} kcal</strong> a day (maintenance ≈ ${Math.round(tdee/10)*10} kcal).</p>`;
+    }
+    html += `<div class="verdict ${pc.level==="green"?"":pc.level}"><div><p><strong>${m[0]}: ${f1(Math.abs(pc.perWeek))} kg/week to ${word}</strong>${m[1]}</p>${kcal}</div></div>`;
+  }
+  if (p && p.height && p.age){
+    const b=bmiBands(p.age), lo=weightForBmi(b.low,p.height), hi=weightForBmi(b.high,p.height);
+    if (g.targetWeight<lo-0.05) html += `<p class="note" style="color:var(--obese)">Your target is below the healthy range for your height (${f1(lo)}–${f1(hi)} kg).</p>`;
+    else if (g.targetWeight>hi+0.05) html += `<p class="note">Your target is above the healthy range for your height (${f1(lo)}–${f1(hi)} kg). Fine as a first step.</p>`;
+  }
+  body.innerHTML = html;
+}
+
+function renderNorm(p,cur){
+  const body=$("#normBody");
+  if (!(p&&p.height&&p.age&&p.sex)){ body.innerHTML=`<p class="muted" style="margin:0">Fill in your profile to see this.</p>`; return; }
+  const b=bmiBands(p.age), h=p.height;
+  const iw=idealWeights(h,p.sex);
+  const rows = [
+    ["Healthy weight range", `${f1(weightForBmi(b.low,h))} – ${f1(weightForBmi(b.high,h))} kg`],
+    ["Ideal weight (average of 4 formulas)", `${f1(iw.avg)} kg`],
+    ["Spread of those formulas", `${f1(iw.min)} – ${f1(iw.max)} kg`],
+  ];
+  if (cur){
+    const tdee=bmr(cur.weight,h,p.age,p.sex)*(p.activity||1.2);
+    rows.push(["Calories to stay at this weight", `≈ ${Math.round(tdee/10)*10} kcal/day`]);
+  }
+  let html = rows.map(r=>`<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("");
+  html += `<p class="note">Based on BMI ${b.low}–${b.high}${p.age>=65?" (the range usually advised from age 65)":""} for ${h} cm, and the Devine, Robinson, Miller and Hamwi formulas for a ${p.sex==="male"?"man":"woman"}. BMI doesn't tell muscle from fat, so if you do a lot of strength training it can read high while you're lean.${p.age<18?" For under-18s these adult ranges don't apply; a doctor uses growth charts instead.":""}</p>`;
+  body.innerHTML = html;
+}
+
+function renderChart(p){
+  const box=$("#chart"), e=sortedEntries(), g=state.goal;
+  if (!e.length){ box.innerHTML=`<div class="empty">Your chart appears after your first weigh-in.</div>`; return; }
+  const W=Math.max(300, box.clientWidth||520), H=230, L=38, R=12, T=12, B=26;
+  let d0=e[0].date, d1=e[e.length-1].date;
+  if (g && g.startDate && g.startDate<d0) d0=g.startDate;
+  if (g && g.targetDate>d1) d1=g.targetDate;
+  if (todayStr()>d1) d1=todayStr();
+  const span=Math.max(daysBetween(d0,d1),6);
+  const ws=e.map(x=>x.weight); if(g) ws.push(g.targetWeight); if(g&&g.startWeight) ws.push(g.startWeight);
+  let y0=Math.floor(Math.min(...ws)-1.5), y1=Math.ceil(Math.max(...ws)+1.5);
+  const X=d=>L+daysBetween(d0,d)/span*(W-L-R);
+  const Y=w=>T+(y1-w)/(y1-y0)*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight chart">`;
+  // healthy band
+  if (p&&p.height&&p.age){
+    const b=bmiBands(p.age);
+    const lo=Math.max(y0,weightForBmi(b.low,p.height)), hi=Math.min(y1,weightForBmi(b.high,p.height));
+    if (hi>lo) s+=`<rect x="${L}" y="${Y(hi)}" width="${W-L-R}" height="${Y(lo)-Y(hi)}" fill="var(--healthy)" opacity=".13"/>`;
+  }
+  // grid
+  const step = (y1-y0)>20?5:(y1-y0)>8?2:1;
+  for (let v=Math.ceil(y0/step)*step; v<=y1; v+=step){
+    s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+    s+=`<text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;
+  }
+  // x labels
+  s+=`<text x="${L}" y="${H-6}" font-size="11" fill="var(--muted)">${fmtDate(d0,{day:"numeric",month:"short"})}</text>`;
+  s+=`<text x="${W-R}" y="${H-6}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtDate(d1,{day:"numeric",month:"short"})}</text>`;
+  // today line
+  const tx=X(todayStr());
+  s+=`<line x1="${tx}" x2="${tx}" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="2 3" stroke-width="1"/>`;
+  // plan line
+  if (g){
+    const sd=g.startDate||e[0].date, sw=g.startWeight??e[0].weight;
+    s+=`<line x1="${X(sd)}" y1="${Y(sw)}" x2="${X(g.targetDate)}" y2="${Y(g.targetWeight)}" stroke="var(--plan)" stroke-width="2" stroke-dasharray="6 5"/>`;
+    s+=`<circle cx="${X(g.targetDate)}" cy="${Y(g.targetWeight)}" r="5" fill="var(--surface)" stroke="var(--plan)" stroke-width="2.5"/>`;
+  }
+  // raw line + dots
+  if (e.length>1) s+=`<polyline fill="none" stroke="var(--ink)" stroke-opacity=".35" stroke-width="1.2" points="${e.map(x=>X(x.date)+","+Y(x.weight)).join(" ")}"/>`;
+  e.forEach(x=>{ s+=`<circle cx="${X(x.date)}" cy="${Y(x.weight)}" r="3" fill="var(--ink)"/>`; });
+  // 7-day average
+  const a=avg7(e);
+  if (a.length>1) s+=`<polyline fill="none" stroke="var(--healthy)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${a.map(x=>X(x.date)+","+Y(x.w)).join(" ")}"/>`;
+  s+=`</svg>`;
+  box.innerHTML=s;
+}
+
+function renderHistory(){
+  const list=$("#historyList"), e=sortedEntries().reverse();
+  if (!e.length){ list.innerHTML=`<div class="empty">No weigh-ins yet. Tap “Add weight” to log your first one.</div>`; return; }
+  list.innerHTML = e.map((x,i)=>{
+    const prev=e[i+1]; let ch="";
+    if (prev){ const d=x.weight-prev.weight; ch=`<span class="ch ${d>0?"up":d<0?"down":"muted"}">${d>0?"+":""}${f1(d)}</span>`; } else ch=`<span class="ch"></span>`;
+    return `<div class="entry">
+      <div class="d">${fmtDate(x.date,{weekday:"short",day:"numeric",month:"short",year:"numeric"})}${x.note?`<small></small>`:""}</div>
+      <span class="w">${f1(x.weight)}</span>${ch}
+      <button class="iconbtn" data-edit="${x.id}" aria-label="Edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></button>
+      <button class="iconbtn" data-del="${x.id}" aria-label="Delete"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+    </div>`;
+  }).join("");
+  // set notes safely as text
+  const nodes=list.querySelectorAll(".entry small");
+  let k=0; e.forEach(x=>{ if(x.note){ nodes[k].textContent=x.note; k++; } });
+}
+
+function fillSettings(){
+  const p=state.profile||{};
+  $$("#sexSeg button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.sex===p.sex)));
+  if (document.activeElement!==$("#pHeight")) $("#pHeight").value = p.height??"";
+  if (document.activeElement!==$("#pAge")) $("#pAge").value = p.age??"";
+  $("#pActivity").value = String(p.activity||1.2);
+  const g=state.goal;
+  if (document.activeElement!==$("#gWeight")) $("#gWeight").value = g?g.targetWeight:"";
+  if (document.activeElement!==$("#gDate")) $("#gDate").value = g?g.targetDate:"";
+  $("#clearGoal").hidden = !g;
+  updateGoalCheck();
+}
+
+function updateGoalCheck(){
+  const w=parseFloat($("#gWeight").value), d=$("#gDate").value, cur=latest(), out=$("#goalCheck");
+  if (!w||!d){ out.textContent=""; return; }
+  if (d<=todayStr()){ out.textContent="Pick a date in the future."; out.style.color="var(--obese)"; return; }
+  if (!cur){ out.textContent="Add a weigh-in to see the weekly pace this needs."; out.style.color=""; return; }
+  const pc=pace({targetWeight:w,targetDate:d},cur.weight);
+  out.style.color = pc.level==="green"?"var(--healthy)":pc.level==="orange"?"var(--over)":"var(--obese)";
+  out.textContent = `That's ${f1(Math.abs(pc.perWeek))} kg per week. ` + (pc.level==="green"?"Realistic.":pc.level==="orange"?"Ambitious.":`Too fast; around ${fmtDate(pc.safeDate)} is safer.`);
+}
+
+/* ---------- interactions ---------- */
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),1800); }
+function showTab(name){
+  $$("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===name)));
+  ["overview","history","settings"].forEach(n=>$("#tab-"+n).hidden = n!==name);
+  window.scrollTo(0,0);
+  if (name==="overview") renderChart(state.profile);
+}
+$$("nav.tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+document.addEventListener("click",ev=>{
+  const go=ev.target.closest("[data-goto]"); if (go) showTab(go.dataset.goto);
+  const ed=ev.target.closest("[data-edit]"); if (ed) openDialog(ed.dataset.edit);
+  const del=ev.target.closest("[data-del]");
+  if (del && confirm("Delete this weigh-in?")){ state.entries=state.entries.filter(x=>x.id!==del.dataset.del); persist(); renderAll(); toast("Weigh-in deleted"); }
+});
+
+let sexSel=null;
+$$("#sexSeg button").forEach(b=>b.addEventListener("click",()=>{ sexSel=b.dataset.sex; $$("#sexSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); }));
+$("#saveProfile").addEventListener("click",()=>{
+  const h=parseFloat($("#pHeight").value), a=parseInt($("#pAge").value,10);
+  const sex = sexSel || (state.profile&&state.profile.sex);
+  if (!sex) return toast("Choose man or woman");
+  if (!(h>=100&&h<=230)) return toast("Enter a height between 100 and 230 cm");
+  if (!(a>=12&&a<=110)) return toast("Enter an age between 12 and 110");
+  state.profile={height:h, age:a, sex, activity:parseFloat($("#pActivity").value)};
+  persist(); renderAll(); toast("Profile saved");
+});
+$("#gWeight").addEventListener("input",updateGoalCheck);
+$("#gDate").addEventListener("input",updateGoalCheck);
+$("#saveGoal").addEventListener("click",()=>{
+  const w=parseFloat($("#gWeight").value), d=$("#gDate").value;
+  if (!(w>=30&&w<=300)) return toast("Enter a target weight");
+  if (!d || d<=todayStr()) return toast("Pick a target date in the future");
+  const cur=latest();
+  const keepStart = state.goal && state.goal.startWeight!=null;
+  state.goal={targetWeight:w, targetDate:d,
+    startWeight: keepStart?state.goal.startWeight:(cur?cur.weight:null),
+    startDate: keepStart?state.goal.startDate:(cur?cur.date:todayStr())};
+  persist(); renderAll(); toast("Goal saved"); showTab("overview");
+});
+$("#clearGoal").addEventListener("click",()=>{ if(confirm("Remove your goal?")){ state.goal=null; persist(); renderAll(); toast("Goal removed"); }});
+
+const dlg=$("#addDialog");
+function openDialog(id){
+  editingId=id||null;
+  const x = id? state.entries.find(e=>e.id===id):null;
+  $("#dlgTitle").textContent = x?"Edit weigh-in":"Add weigh-in";
+  $("#eWeight").value = x?x.weight:(latest()?f1(latest().weight):"");
+  $("#eDate").value = x?x.date:todayStr();
+  $("#eDate").max = todayStr();
+  $("#eNote").value = x?(x.note||""):"";
+  dlg.showModal(); setTimeout(()=>{$("#eWeight").focus(); $("#eWeight").select();},50);
+}
+$("#addBtn").addEventListener("click",()=>openDialog());
+$("#cancelEntry").addEventListener("click",()=>dlg.close());
+$("#saveEntry").addEventListener("click",()=>{
+  const w=parseFloat(String($("#eWeight").value).replace(",",".")), d=$("#eDate").value, note=$("#eNote").value.trim();
+  if (!(w>=20&&w<=350)) return toast("Enter a weight in kg");
+  if (!d) return toast("Pick a date");
+  let msg="Weight saved";
+  if (editingId){
+    const x=state.entries.find(e=>e.id===editingId); Object.assign(x,{weight:w,date:d,note});
+    state.entries=state.entries.filter(e=>e.id===editingId || e.date!==d);
+  } else {
+    const same=state.entries.find(e=>e.date===d);
+    if (same){ Object.assign(same,{weight:w,note}); msg="Updated the weigh-in for that day"; }
+    else state.entries.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), date:d, weight:w, note});
+  }
+  if (state.goal && state.goal.startWeight==null){ const f=sortedEntries()[0]; state.goal.startWeight=f.weight; state.goal.startDate=f.date; }
+  persist(); dlg.close(); renderAll(); toast(msg);
+});
+$("#eWeight").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#saveEntry").click(); });
+
+/* theme */
+function applyTheme(t){
+  if (t==="auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme",t);
+  $$("#themeSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.theme===t)));
+}
+let theme="auto"; try{ theme=localStorage.getItem(THEME_KEY)||"auto"; }catch(e){}
+applyTheme(theme);
+$$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{ applyTheme(b.dataset.theme); try{localStorage.setItem(THEME_KEY,b.dataset.theme);}catch(e){} }));
+
+/* backup */
+$("#exportBtn").addEventListener("click",()=>{
+  const json=JSON.stringify(state,null,2);
+  try{
+    const blob=new Blob([json],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download="weight-backup-"+todayStr()+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    toast("Backup exported");
+  }catch(e){}
+  $("#exportFallback").hidden=false; $("#exportText").value=json;
+});
+$("#importBtn").addEventListener("click",()=>$("#importFile").click());
+$("#importFile").addEventListener("change",ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if (!Array.isArray(d.entries)) throw new Error();
+      d.entries=d.entries.filter(x=>x&&typeof x.weight==="number"&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)).map(x=>({id:String(x.id||Math.random().toString(36).slice(2)),date:x.date,weight:x.weight,note:String(x.note||"").slice(0,80)}));
+      if (!confirm(`Replace your current data with this backup (${d.entries.length} weigh-ins)?`)) return;
+      state={profile:d.profile||null, goal:d.goal||null, entries:d.entries, updatedAt:0};
+      persist(); renderAll(); toast("Backup imported");
+    }catch(e){ toast("That file isn't a valid backup"); }
+    ev.target.value="";
+  };
+  r.readAsText(f);
+});
+
+let rt; window.addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(()=>renderChart(state.profile),150); });
+
+renderAll();
+setSync("Saved on this phone");
+
+/* ---------- offline support ---------- */
+if ("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+})();
+</script>
+</body>
+</html>
